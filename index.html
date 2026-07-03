@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parisi Tapware Finder</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation (Minimal) -->
+    <aside class="sidebar">
+      <div class="logo-area">
+        <div class="logo-icon"><i data-lucide="scan-line"></i></div>
+      </div>
+      <nav class="side-nav">
+        <a href="#" class="nav-item active" title="Search Dashboard"><i data-lucide="search"></i></a>
+        <a href="#" class="nav-item" title="Favorites" id="nav-favorites"><i data-lucide="star"></i></a>
+        <a href="#" class="nav-item" title="Database"><i data-lucide="database"></i></a>
+        <a href="#" class="nav-item" title="Settings"><i data-lucide="settings"></i></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="https://github.com/thiago-axis/parisi-finder" target="_blank" class="nav-item" title="GitHub / Help"><i data-lucide="help-circle"></i></a>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1>Parisi Tapware Finder</h1>
+          <span class="badge-status">System Online</span>
+        </div>
+        <div class="topbar-right">
+          <label for="csv-upload" class="btn btn-primary">
+            <i data-lucide="upload-cloud"></i> Import CSV Data
+          </label>
+          <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+          <div class="user-profile">
+            <div class="avatar">TA</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content-container">
+        
+        <!-- Search Section -->
+        <section class="search-section">
+          <div class="search-wrapper">
+            <div class="search-input-container">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="search-input" placeholder="Scan or type Product Code, Name, Barcode, Shelf or Location..." disabled autocomplete="off">
+              <button id="clear-search" class="icon-btn hidden" title="Clear (Esc)"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+          <div class="filters-wrapper">
+            <select id="filter-location" class="custom-select" disabled>
+              <option value="all">📍 All Locations</option>
+              <option value="has">📍 Has Location</option>
+              <option value="missing">📍 No Location</option>
+            </select>
+            <select id="filter-shelf" class="custom-select" disabled>
+              <option value="all">📦 All Shelves</option>
+              <option value="has">📦 Has Shelf</option>
+              <option value="missing">📦 No Shelf</option>
+            </select>
+            <select id="filter-status" class="custom-select" disabled>
+              <option value="all">🔄 All Statuses</option>
+              <option value="checked">✅ Stock Checked</option>
+            </select>
+            <button id="export-btn" class="btn btn-outline" disabled title="Export filtered results to CSV">
+              <i data-lucide="download"></i> Export
+            </button>
+          </div>
+        </section>
+
+        <!-- Stats & Quick Actions -->
+        <section class="stats-section">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255,255,255,0.05); color: #a1a1aa;"><i data-lucide="package"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">Total Products</span>
+              <span class="stat-value" id="stat-total">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #34d399;"><i data-lucide="map-pin-check"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">Location Mapped</span>
+              <span class="stat-value text-emerald" id="stat-loc-ok">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(56, 189, 248, 0.1); color: #38bdf8;"><i data-lucide="layers"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">Shelf Mapped</span>
+              <span class="stat-value text-blue" id="stat-shelf-ok">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(244, 63, 94, 0.1); color: #fb7185;"><i data-lucide="alert-triangle"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">Action Required (Missing)</span>
+              <span class="stat-value text-rose" id="stat-missing">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Searches (Dynamic) -->
+        <section class="recent-searches hidden" id="recent-searches-container">
+          <span class="recent-label"><i data-lucide="history"></i> Recent:</span>
+          <div class="recent-tags" id="recent-tags"></div>
+        </section>
+
+        <!-- Results Area -->
+        <section class="results-section">
+          
+          <!-- State: Empty / Initial -->
+          <div id="empty-state" class="system-state">
+            <div class="state-icon pulse"><i data-lucide="database"></i></div>
+            <h2>Database Not Loaded</h2>
+            <p>Upload the <strong>unified CSV file</strong> to initialize the search engine.</p>
+            <p class="text-xs text-muted mt-2">Data is processed locally and securely in your browser.</p>
+          </div>
+
+          <!-- State: Loading -->
+          <div id="loading-state" class="system-state hidden">
+            <div class="state-icon spin text-primary"><i data-lucide="loader-2"></i></div>
+            <h2>Processing Database...</h2>
+            <p>Indexing warehouse items and locations.</p>
+          </div>
+
+          <!-- State: No Results -->
+          <div id="no-results-state" class="system-state hidden">
+            <div class="state-icon text-muted"><i data-lucide="search-x"></i></div>
+            <h2>No Items Found</h2>
+            <p>We couldn't find any products matching your criteria.</p>
+            <button id="reset-filters-btn" class="btn btn-outline mt-4">Reset Filters</button>
+          </div>
+
+          <!-- Results Grid -->
+          <div class="results-grid" id="results-grid">
+            <!-- Cards injected via JS -->
+          </div>
+        </section>
+        
+      </div>
+    </main>
+  </div>
+  
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden">
+    <i data-lucide="check-circle-2"></i>
+    <span id="toast-message">Copied to clipboard!</span>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
